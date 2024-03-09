@@ -1,30 +1,58 @@
-package http.handlers;
+package main.http.handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import http.HttpMethod;
-import http.Request;
-import utils.Utils;
+import main.http.HttpMethod;
+import main.http.Request;
+import main.utils.Utils;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.*;
 
-import static http.Router.routes;
+import static main.http.Router.routes;
 
 public class RequestHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
         HttpMethod requestMethod = HttpMethod.valueOf(exchange.getRequestMethod());
+        MethodWithArguments methodWithArguments = new MethodWithArguments(path, requestMethod);
+        Method method = methodWithArguments.method;
 
+        List<Object> arguments = new ArrayList<>();
+        Request request = new Request(exchange);
+        arguments.add(request);
+        arguments.addAll(methodWithArguments.arguments);
+
+        if (method != null) {
+            try {
+                // TODO: Find and execute middlewares
+                method.invoke(null, arguments.toArray());
+            } catch (Exception e) {
+                // TODO: Handle 500
+                e.printStackTrace();
+            }
+        }
+
+        // TODO: Handle 404
+    }
+}
+
+class MethodWithArguments {
+    public Method method;
+    public List<Object> arguments;
+
+    MethodWithArguments(String path, HttpMethod requestMethod) {
+        this.method = null;
+        this.arguments = null;
+
+        this.init(path, requestMethod);
+    }
+
+    private void init(String path, HttpMethod requestMethod) {
         // Leading slash causes empty array item, remove leading slash
         String[] requestPathSegments = path.substring(1).split("/");
-        boolean foundRoute = false;
-        Method method = null;
-        List<Object> args = new ArrayList<>();
-        Request request = new Request(exchange);
-        args.add(request);
 
         for (Map.Entry<String, Map<HttpMethod, Method>> routeSet: routes.entrySet()) {
             String route = routeSet.getKey();
@@ -38,32 +66,28 @@ public class RequestHandler implements HttpHandler {
                 continue;
             }
 
-            Map<String, Object> routeWithArgs = getRouteWithArgs(routePathSegments, requestPathSegments);
-            foundRoute = (boolean) routeWithArgs.get("foundRoute");
+            RouteWithArguments routeWithArgs = new RouteWithArguments(routePathSegments, requestPathSegments);
 
-            if (foundRoute) {
-                method = methodMap.get(requestMethod);
-                args.addAll((Collection<?>) routeWithArgs.get("args"));
-
-                break;
+            if (routeWithArgs.found) {
+                this.method = methodMap.get(requestMethod);
+                this.arguments = routeWithArgs.arguments;
             }
         }
+    }
+}
 
+class RouteWithArguments {
+    public boolean found;
+    public List<Object> arguments;
 
-        if (foundRoute && method != null) {
-            try {
-                // TODO: Find and execute middlewares
-                method.invoke(null, args.toArray());
-            } catch (Exception e) {
-                // TODO: Handle 500
-                e.printStackTrace();
-            }
-        }
+    RouteWithArguments(String[] routePathSegments, String[] requestPathSegments) {
+        this.found = false;
+        this.arguments = new ArrayList<>();
 
-        // TODO: Handle 404
+        this.init(routePathSegments, requestPathSegments);
     }
 
-    private Map<String, Object> getRouteWithArgs(String[] routePathSegments, String[] requestPathSegments) {
+    private void init(String[] routePathSegments, String[] requestPathSegments) {
         int matchedSegments = 0;
         List<Object> args = new ArrayList<>();
 
@@ -83,12 +107,9 @@ public class RequestHandler implements HttpHandler {
             }
         }
 
-        boolean foundRoute = matchedSegments == routePathSegments.length;
-        Map<String, Object> results = new HashMap<>();
-        results.put("foundRoute", foundRoute);
-        results.put("args", args);
-
-        return results;
+        // Route is found when segments match and are in equal length
+        this.found = matchedSegments == routePathSegments.length;
+        this.arguments = args;
     }
 
     private Object getArgument(String routePathSegment, String requestPathSegment) {

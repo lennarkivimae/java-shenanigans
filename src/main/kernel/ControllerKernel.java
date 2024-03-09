@@ -1,11 +1,11 @@
-package kernel;
+package main.kernel;
 
-import http.Route;
+import main.http.Route;
+import main.utils.Utils;
 
 import java.io.File;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.net.URI;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ControllerKernel {
@@ -19,12 +19,17 @@ public class ControllerKernel {
     public static Set<Class<?>> getClasses(String packageName) {
         String path = packageName.replace('.', '/');
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        try {
-            Set<String> resources = new HashSet<>(java.util.Arrays.asList(
-                    new File(classLoader.getResource(path).toURI()).list()
-            ));
 
-            return resources.stream()
+        if (classLoader == null || classLoader.getResource(path) == null) {
+             return Collections.emptySet();
+        }
+
+        try {
+            URI fileURI = Objects.requireNonNull(classLoader.getResource(path)).toURI();
+            File file = new File(fileURI);
+            String[] classList = Utils.coalesce(file.list(), new String[]{});
+
+            return Arrays.stream(classList)
                     .filter(resource -> resource.endsWith(".class"))
                     .map(resource -> {
                         String className = resource.substring(0, resource.length() - 6);

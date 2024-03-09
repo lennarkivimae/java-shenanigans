@@ -1,17 +1,17 @@
-package http;
+package main.http;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import static http.Router.routes;
+import static main.http.Router.routes;
 
 public class Route {
     public static void register(Class<?> controllerClass) {
         Method[] methods = controllerClass.getDeclaredMethods();
         for (Method method : methods) {
-            if (method.isAnnotationPresent(http.annotations.Route.class)) {
-                http.annotations.Route annotation = method.getAnnotation(http.annotations.Route.class);
+            if (method.isAnnotationPresent(main.http.annotations.Route.class)) {
+                main.http.annotations.Route annotation = method.getAnnotation(main.http.annotations.Route.class);
                 String path = annotation.value();
 
                 Map<HttpMethod, Method> currentRoute = findOrCreate(path);

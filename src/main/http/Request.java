@@ -1,7 +1,9 @@
-package http;
+package main.http;
 
 import com.sun.net.httpserver.HttpExchange;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -34,12 +36,33 @@ public class Request {
         return params.get(name);
     }
 
-    public void setResponseCode(int code) {
+    public Request setResponseCode(int code) {
         this.code = code;
+
+        return this;
     }
 
-    public void setResponseType(String type) {
+    public Request setResponseType(String type) {
         this.responseType = type;
+
+        return this;
+    }
+
+    public void render(String path) throws IOException {
+        StringBuilder stringBuilder = new StringBuilder();
+        String str = "";
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            while ((str = reader.readLine()) != null) {
+                stringBuilder.append(str);
+            }
+
+            reader.close();
+
+            this.response(stringBuilder.toString());
+        } catch (IOException e) {
+            System.out.println("Request: Render: Failed to render file: " + path);
+        }
     }
 
     public void response(String body) throws IOException {

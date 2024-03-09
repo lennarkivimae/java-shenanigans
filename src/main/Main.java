@@ -1,11 +1,13 @@
+package main;
+
 import com.sun.net.httpserver.HttpServer;
-import http.handlers.RequestHandler;
+import main.http.handlers.RequestHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import static java.lang.System.*;
-import static kernel.ControllerKernel.loadControllers;
+import static main.kernel.ControllerKernel.loadControllers;
 
 public class Main {
     static HttpServer server;
@@ -14,7 +16,8 @@ public class Main {
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8080), 0);
         Main.server = server;
 
-        loadControllers("http.controllers");
+        loadControllers("main.http.controllers");
+        loadControllers("main.http.controllers.api");
 
         server.createContext("/", new RequestHandler());
 

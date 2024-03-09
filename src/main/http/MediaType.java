@@ -1,4 +1,4 @@
-package http;
+package main.http;
 
 public enum MediaType {
     JSON () {
