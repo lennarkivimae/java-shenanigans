@@ -1,6 +1,7 @@
 package main.http.controllers.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import main.http.HttpResponseCodes;
 import main.http.MediaType;
 import main.http.Request;
 import main.http.annotations.Route;
@@ -20,6 +21,6 @@ public class IndexController {
         String responseJson = objectMapper.writeValueAsString(response);
         String responseType = MediaType.JSON.value();
 
-        request.setResponseType(responseType).response(responseJson);
+        request.setResponseType(responseType).response(responseJson, HttpResponseCodes.OK);
     }
 }

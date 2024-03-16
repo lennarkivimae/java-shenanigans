@@ -2,48 +2,68 @@ package main.http.handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import main.http.HttpMethod;
-import main.http.Request;
+import main.http.*;
+import main.http.middlewares.Middleware;
 import main.utils.Utils;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.*;
 
-import static main.http.Router.routes;
-
 public class RequestHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        Request request = new Request(exchange);
         String path = exchange.getRequestURI().getPath();
         HttpMethod requestMethod = HttpMethod.valueOf(exchange.getRequestMethod());
-        MethodWithArguments methodWithArguments = new MethodWithArguments(path, requestMethod);
+        RouteData methodWithArguments = new RouteData(path, requestMethod);
         Method method = methodWithArguments.method;
 
-        List<Object> arguments = new ArrayList<>();
-        Request request = new Request(exchange);
-        arguments.add(request);
-        arguments.addAll(methodWithArguments.arguments);
+        if (method == null) {
+            request.setResponseCode(HttpResponseCodes.NOT_FOUND);
+            request.render("not-found", Collections.emptyMap());
 
-        if (method != null) {
-            try {
-                // TODO: Find and execute middlewares
-                method.invoke(null, arguments.toArray());
-            } catch (Exception e) {
-                // TODO: Handle 500
-                e.printStackTrace();
-            }
+            return;
         }
 
-        // TODO: Handle 404
+        this.executeRoute(request, method, methodWithArguments);
+    }
+
+    private void executeRoute(Request request, Method method, RouteData routeData) {
+        List<Object> arguments = new ArrayList<>();
+        arguments.add(request);
+        arguments.addAll(routeData.arguments);
+
+        try {
+            boolean satisfied = true;
+
+            for (Class<? extends Middleware> middleware : routeData.middlewares) {
+                try {
+                    Middleware middlewareInstance = middleware.getConstructor().newInstance();
+                    middlewareInstance.invoke(request);
+                } catch (Exception e) {
+                    satisfied = false;
+
+                    break;
+                }
+            }
+
+            if (satisfied) {
+                method.invoke(null, arguments.toArray());
+            }
+        } catch (Exception e) {
+            request.setResponseCode(HttpResponseCodes.INTERNAL_SERVER_ERROR);
+            request.render("internal-error", Collections.emptyMap());
+        }
     }
 }
 
-class MethodWithArguments {
+class RouteData {
     public Method method;
     public List<Object> arguments;
+    public List<Class<? extends main.http.middlewares.Middleware>> middlewares;
 
-    MethodWithArguments(String path, HttpMethod requestMethod) {
+    RouteData(String path, HttpMethod requestMethod) {
         this.method = null;
         this.arguments = null;
 
@@ -54,10 +74,10 @@ class MethodWithArguments {
         // Leading slash causes empty array item, remove leading slash
         String[] requestPathSegments = path.substring(1).split("/");
 
-        for (Map.Entry<String, Map<HttpMethod, Method>> routeSet: routes.entrySet()) {
-            String route = routeSet.getKey();
-            Map<HttpMethod, Method> methodMap = routeSet.getValue();
+        Map<String, Route> routes = Router.getRoutesForHttpMethod(requestMethod);
 
+        for (Map.Entry<String, Route> routeSet : routes.entrySet()) {
+            String route = routeSet.getKey();
             String[] routePathSegments = route.substring(1).split("/");
             boolean hasSufficientSegments = routePathSegments.length == requestPathSegments.length;
             boolean matchesRouteSegment = Objects.equals(routePathSegments[0], requestPathSegments[0]);
@@ -69,7 +89,8 @@ class MethodWithArguments {
             RouteWithArguments routeWithArgs = new RouteWithArguments(routePathSegments, requestPathSegments);
 
             if (routeWithArgs.found) {
-                this.method = methodMap.get(requestMethod);
+                this.method = routeSet.getValue().getRouteControllerMethod();
+                this.middlewares = routeSet.getValue().getMiddlewares();
                 this.arguments = routeWithArgs.arguments;
             }
         }

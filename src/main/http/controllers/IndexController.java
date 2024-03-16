@@ -4,10 +4,13 @@ import main.http.HttpMethod;
 import main.http.Request;
 import main.http.annotations.Middleware;
 import main.http.annotations.Route;
+import main.http.middlewares.Logger;
+
+import java.util.Collections;
 
 public class IndexController {
     @Route("/user/{id:int}")
-    @Middleware("logger")
+    @Middleware(Logger.class)
     public static void user(Request request, int id) {
         System.out.println("User method");
         System.out.println("ID: " + id);
@@ -20,6 +23,6 @@ public class IndexController {
 
     @Route("/")
     public static void index(Request request) {
-        // Logic for handling "/" request
+        request.render("index", Collections.emptyMap());
     }
 }

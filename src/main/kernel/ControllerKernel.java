@@ -10,13 +10,16 @@ import java.util.stream.Collectors;
 
 public class ControllerKernel {
     public static void loadControllers(String packageName) {
-        Set<Class<?>> classes = getClasses(packageName);
+        ControllerKernel kernel = new ControllerKernel();
+
+        Set<Class<?>> classes = kernel.getClasses(packageName);
+
         for (Class<?> clazz : classes) {
-            registerController(clazz);
+            kernel.registerController(clazz);
         }
     }
 
-    public static Set<Class<?>> getClasses(String packageName) {
+    private Set<Class<?>> getClasses(String packageName) {
         String path = packageName.replace('.', '/');
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
@@ -47,7 +50,7 @@ public class ControllerKernel {
             return Collections.emptySet();
         }
     }
-    public static void registerController(Class<?> controllerClass) {
+    private void registerController(Class<?> controllerClass) {
         Route.register(controllerClass);
     }
 }
