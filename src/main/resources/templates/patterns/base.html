@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title th:text="${title}"></title>
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li>
+                    <a hx-target="body" hx-get="/" hx-replace-url="true">Home</a>
+                </li>
+                <li>
+                    <a hx-target="body" hx-get="/test" hx-replace-url="true">Test</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <main class="page" th:replace="${content}"></main>
+
+    <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous" defer></script>
+</body>
+</html>

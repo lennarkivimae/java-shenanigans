@@ -21,6 +21,11 @@ public class IndexController {
         // Logic for handling "/hello" request
     }
 
+    @Route("/test")
+    public static void test(Request request) {
+        request.render("test", Collections.emptyMap());
+    }
+
     @Route("/")
     public static void index(Request request) {
         request.render("index", Collections.emptyMap());

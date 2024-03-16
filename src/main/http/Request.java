@@ -89,6 +89,7 @@ public class Request {
                 this.response(engine.process("internal-error", ctx), HttpResponseCodes.INTERNAL_SERVER_ERROR);
             } catch (IOException ex) {
                 System.out.println("Request: Render: Failed to render internal-error: " + ex);
+                this.exchange.close();
             }
         }
     }
@@ -99,18 +100,21 @@ public class Request {
 
         try {
             this.exchange.sendResponseHeaders(code.getCode(), contentLength);
+
+            if (responseType.equals(MediaType.JSON.value())) {
+                respondJson(body);
+
+                return;
+            }
+
+            this.setHeader("Content-Type", MediaType.HTML.getContentType());
+            this.stream.write(body.getBytes());
         } catch (IOException e) {
             System.out.println("Request: Response: Failed to send response: " + e);
+        } finally {
+            // Free up connection.
+            this.exchange.close();
         }
-
-        if (responseType.equals(MediaType.JSON.value())) {
-            respondJson(body);
-
-            return;
-        }
-
-        this.setHeader("Content-Type", MediaType.HTML.getContentType());
-        this.stream.write(body.getBytes());
     }
 
     private void respondJson(String body) throws IOException {
